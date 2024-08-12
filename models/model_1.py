@@ -27,4 +27,7 @@ def train_svm_model(dataset_path):
     # Save the trained model
     joblib.dump(model, 'svm_model.pkl')
     
-    return model
+# Call the function to train and save the model
+if __name__ == '__main__':
+    train_svm_model('dataset/278k_song_labelled.csv')
+    

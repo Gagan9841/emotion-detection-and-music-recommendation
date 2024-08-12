@@ -20,6 +20,10 @@ def train_random_forest_model(dataset_path):
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
     
+        # Evaluate the model (optional)
+    accuracy = model.score(X_test, y_test)
+    print(f"Model accuracy: {accuracy * 100:.2f}%")
+    
     # Save the model
     joblib.dump(model, 'random_forest_model.pkl')
     

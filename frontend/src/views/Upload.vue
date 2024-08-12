@@ -50,6 +50,12 @@ import { onMounted, ref } from 'vue';
 import { postRequest } from '../services/api';
 
 const image = ref(null);
+const songs = ref([]);
+
+function displayRecommendations(emotion) {
+  // Map the emotion to songs and update the songs array
+  songs.value = getSongsForEmotion(emotion);
+}
 
 function photoTaken(data) {
   image.value = data.image_data_url;

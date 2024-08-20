@@ -6,9 +6,12 @@ import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint
 import seaborn as sns 
 from sklearn.metrics import confusion_matrix
+from keras.layers import BatchNormalization
+import matplotlib.pyplot as plt
 
-train_dir = "../dataset/input/fer2013/train" # Directory containing the training data
-test_dir = "../dataset/input/fer2013/test"  # Directory containing the validation data
+
+train_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\train" # Directory containing the training data
+test_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\test"  # Directory containing the validation data
 
 
 train_datagen = ImageDataGenerator(
@@ -98,11 +101,11 @@ model.add(Dropout(0.5))
 model.add(Dense(7, activation='softmax'))
 
 # Compile the model with categorical cross-entropy loss, adam optimizer, and accuracy metric
-model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(lr=0.0001), metrics=['accuracy'])
+model.compile(loss="categorical_crossentropy", optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
 
 # Define the callback
 checkpoint_callback = ModelCheckpoint(
-    filepath='model_weights.h5',
+    filepath='model_weights.weights.h5',
     monitor='val_accuracy',
     save_best_only=True,
     save_weights_only=True,
@@ -110,46 +113,45 @@ checkpoint_callback = ModelCheckpoint(
     verbose=1
 )
 
-# Train the model with the callback
+# Calculate the steps per epoch and validation steps
+steps_per_epoch = train_generator.samples // train_generator.batch_size
+validation_steps = validation_generator.samples // validation_generator.batch_size
+
+# Train the model with calculated steps per epoch and validation steps
 history = model.fit(
     train_generator,
-    steps_per_epoch=len(train_generator),
+    steps_per_epoch=steps_per_epoch,
     epochs=50,
     validation_data=validation_generator,
-    validation_steps=len(validation_generator),
+    validation_steps=validation_steps,
     callbacks=[checkpoint_callback]
 )
 
-# Plot the train and validation loss
-train_loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs = range(1, len(train_loss) + 1)
-plt.plot(epochs, train_loss, 'bo', label='Training loss')
-plt.plot(epochs, val_loss, 'b', label='Validation loss')
+# Save the train and validation loss plot
+plt.plot(history.history['loss'], 'bo', label='Training loss')
+plt.plot(history.history['val_loss'], 'b', label='Validation loss')
 plt.title('Training and validation loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
-plt.show()
+plt.savefig('training_validation_loss.png')
+plt.close()
 
-# Plot the train and validation accuracy
-train_acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-plt.plot(epochs, train_acc, 'bo', label='Training accuracy')
-plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
+# Save the train and validation accuracy plot
+plt.plot(history.history['accuracy'], 'bo', label='Training accuracy')
+plt.plot(history.history['val_accuracy'], 'b', label='Validation accuracy')
 plt.title('Training and validation accuracy')
 plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
-plt.show()
+plt.savefig('training_validation_accuracy.png')
+plt.close()
 
-
-# Get the true labels and predicted labels for the validation set
+# Compute and save the confusion matrix plot
 validation_labels = validation_generator.classes
 validation_pred_probs = model.predict(validation_generator)
 validation_pred_labels = np.argmax(validation_pred_probs, axis=1)
 
-# Compute the confusion matrix
 confusion_mtx = confusion_matrix(validation_labels, validation_pred_labels)
 class_names = list(train_generator.class_indices.keys())
 sns.set()
@@ -158,4 +160,5 @@ sns.heatmap(confusion_mtx, annot=True, fmt='d', cmap='YlGnBu',
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
 plt.title('Confusion Matrix')
-plt.show()
+plt.savefig('confusion_matrix.png')
+plt.close()

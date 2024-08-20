@@ -8,6 +8,7 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 from keras.layers import BatchNormalization
 import matplotlib.pyplot as plt
+import numpy as np 
 
 
 train_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\train" # Directory containing the training data
@@ -116,6 +117,9 @@ checkpoint_callback = ModelCheckpoint(
 # Calculate the steps per epoch and validation steps
 steps_per_epoch = train_generator.samples // train_generator.batch_size
 validation_steps = validation_generator.samples // validation_generator.batch_size
+
+print(steps_per_epoch, "steps per epoch")
+print(validation_steps, "validation steps")
 
 # Train the model with calculated steps per epoch and validation steps
 history = model.fit(

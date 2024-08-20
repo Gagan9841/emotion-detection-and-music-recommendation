@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 
 # Load the trained model
-model = joblib.load('svm_model.pkl')
+model = joblib.load('trained_model_weights.weights.h5')
 
 @app.route('/predict', methods=['POST'])
 def predict_emotion():

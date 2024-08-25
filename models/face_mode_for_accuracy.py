@@ -10,8 +10,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Directories for training and testing data
-train_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/train" # Directory containing the training data in linux
-test_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/test"  # Directory containing the validation data in linux
+
+train_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\train" # Directory containing the training data
+test_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\test"  # Directory containing the validation data
+
+# train_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/train" # Directory containing the training data in linux
+# test_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/test"  # Directory containing the validation data in linux
 
 train_datagen = ImageDataGenerator(
     width_shift_range = 0.1,        # Randomly shift the width of images by up to 10%

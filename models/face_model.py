@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np 
 
 
-# train_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\train" # Directory containing the training data
-# test_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\test"  # Directory containing the validation data
+train_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\train" # Directory containing the training data
+test_dir = "C:\laragon\www\8th_sem_project\emotion-detection-and-music-recommendation\dataset\input\\fer2013\\test"  # Directory containing the validation data
 
-train_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/train" # Directory containing the training data in linux
-test_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/test"  # Directory containing the validation data in linux
+# train_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/train" # Directory containing the training data in linux
+# test_dir = "/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/input/fer2013/test"  # Directory containing the validation data in linux
 
 
 train_datagen = ImageDataGenerator(

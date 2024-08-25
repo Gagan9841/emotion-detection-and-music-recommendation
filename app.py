@@ -116,7 +116,7 @@ def capture_emotion():
 
 # Load the models
 detection_model_path = 'haarcascade_files/haarcascade_frontalface_default.xml'
-emotion_model_path = 'models/_mini_XCEPTION.102-0.66.hdf5'
+emotion_model_path = './Emotion_little_vgg.keras'
 face_detection = cv2.CascadeClassifier(detection_model_path)
 emotion_classifier = load_model(emotion_model_path, compile=False)
 EMOTIONS = ["angry", "disgust", "scared", "happy", "sad", "surprised", "neutral"]

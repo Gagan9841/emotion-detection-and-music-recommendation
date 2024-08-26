@@ -3,3 +3,4 @@
 .venv/Lib/*
 .venv/Lib/site-packages/*
 ./model_weights_vgg16.weights
+model_weights_vgg16.weights.h5

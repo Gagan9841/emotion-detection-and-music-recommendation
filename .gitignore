@@ -2,3 +2,4 @@
 .venv/*
 .venv/Lib/*
 .venv/Lib/site-packages/*
+./model_weights_vgg16.weights

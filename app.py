@@ -89,10 +89,10 @@ def get_recommendations():
 
     # Get recommendations based on emotion
     try:
-        recommendations = recommend_songs(emotion)
+        recommendations = recommend_songs(emotion, num_recommendations=10, confidence=confidence)
         # Convert dataframe to list of dicts for JSON response
         recommendations_list = recommendations.to_dict(orient='records')
-        return jsonify({"data":recommendations_list}), 200
+        return jsonify({"data": recommendations_list}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

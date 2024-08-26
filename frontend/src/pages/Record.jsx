@@ -24,28 +24,23 @@ const Record = (props) => {
       });
   };
 
+  const stopCamera = () => {
+    const stream = videoRef.current.srcObject;
+    const tracks = stream.getTracks();
+    tracks.forEach((track) => track.stop());
+    setCameraOn(false);
+  };
+
   const captureImage = () => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    canvas.width = 48; // Set to model's expected width
-    canvas.height = 48; // Set to model's expected height
     const context = canvas.getContext("2d");
 
-    // Draw the video frame to the canvas
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert the image to grayscale
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      const avg =
-        (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
-      imageData.data[i] = avg; // Red channel
-      imageData.data[i + 1] = avg; // Green channel
-      imageData.data[i + 2] = avg; // Blue channel
-    }
-    context.putImageData(imageData, 0, 0);
-
-    // Convert the canvas content to a blob
     canvas.toBlob((blob) => {
       setCapturedImage(blob);
       playSound();
@@ -64,24 +59,19 @@ const Record = (props) => {
     oscillator.stop(audioContext.currentTime + 0.5); // Play sound for 0.5 seconds
   };
 
-  const stopCamera = () => {
-    const stream = videoRef.current.srcObject;
-    const tracks = stream.getTracks();
-    tracks.forEach((track) => track.stop());
-    setCameraOn(false);
-  };
-  const fetchRecommendedSongs = async (emotion) => {
+  const fetchRecommendedSongs = async (emotion, confidence) => {
     try {
-      const params = new URLSearchParams();
-      emotion.forEach((value, index) => {
-        params.append(`emotion`, value);
-      });
-
       const response = await axios.get(
-        `http://127.0.0.1:5000/recommend-songs?${params.toString()}`
+        `http://127.0.0.1:5000/recommend-songs`,
+        {
+          params: {
+            emotion: emotion,
+            confidence: confidence,
+          },
+        }
       );
 
-      setRecommendedSongs(response.data.songs);
+      setRecommendedSongs(response.data.data); // Adjust based on actual response structure
     } catch (error) {
       console.error("Error fetching recommended songs:", error);
     }
@@ -89,11 +79,11 @@ const Record = (props) => {
 
   const handlePredict = async () => {
     const formData = new FormData();
-    formData.append("files", capturedImage, "image.png");
+    formData.append("files", capturedImage);
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:5000/predict-emotion",
+        "http://127.0.0.1:5000/detect-emotion",
         formData,
         {
           headers: {
@@ -105,16 +95,11 @@ const Record = (props) => {
       if (response.data.error) {
         alert(`Error: ${response.data.error}`);
       } else {
-        // Determine the emotion with the highest probability
-        const emotionProbabilities = response.data.emotion;
-        const emotionLabels = ["sad", "happy", "energetic", "calm"];
-        const highestProbabilityIndex = emotionProbabilities.indexOf(
-          Math.max(...emotionProbabilities)
-        );
-        const detectedEmotion = emotionLabels[highestProbabilityIndex];
+        const detectedEmotion = response.data.emotion;
+        const confidence = response.data.confidence;
 
         setPredictedEmotion(detectedEmotion);
-        fetchRecommendedSongs(detectedEmotion);
+        await fetchRecommendedSongs(detectedEmotion, confidence);
       }
     } catch (error) {
       console.error("Error making prediction:", error);
@@ -126,35 +111,49 @@ const Record = (props) => {
       <Navbar />
       <div className="w-full h-full flex flex-col items-center justify-center mt-8">
         {/* Camera Feed */}
-        <video ref={videoRef} autoPlay className="w-full max-w-md" />
-        <canvas ref={canvasRef} className="w-full max-w-md mt-4" />
+        <video
+          ref={videoRef}
+          autoPlay
+          className="w-full max-w-md border-2 border-gray-300 rounded-lg"
+        />
+        <canvas
+          ref={canvasRef}
+          className="w-full max-w-md mt-4 border-2 border-gray-300 rounded-lg"
+        />
 
-        {/* Start Camera Button */}
-        {!cameraOn && (
-          <div
-            className="bg-blue-500 hover:bg-blue-600 px-6 py-3 mt-4 rounded-full text-white cursor-pointer transition-all duration-300"
+        {/* Start/Stop Camera Button */}
+        {!cameraOn ? (
+          <button
+            className="bg-blue-500 hover:bg-blue-600 px-6 py-3 mt-4 rounded-full text-white transition-all duration-300"
             onClick={startCamera}
           >
             Start Camera
-          </div>
+          </button>
+        ) : (
+          <button
+            className="bg-red-500 hover:bg-red-600 px-6 py-3 mt-4 rounded-full text-white transition-all duration-300"
+            onClick={stopCamera}
+          >
+            Stop Camera
+          </button>
         )}
 
         {/* Capture Image Button */}
-        <div
-          className="bg-green-500 hover:bg-green-600 px-6 py-3 mt-4 rounded-full text-white cursor-pointer transition-all duration-300"
+        <button
+          className="bg-green-500 hover:bg-green-600 px-6 py-3 mt-4 rounded-full text-white transition-all duration-300"
           onClick={captureImage}
         >
           Capture Image
-        </div>
+        </button>
 
         {/* Predict Button (Visible only after capturing) */}
         {capturedImage && (
-          <div
-            className="bg-rose-500 hover:bg-rose-600 px-6 py-3 mt-4 rounded-full text-white cursor-pointer transition-all duration-300"
+          <button
+            className="bg-rose-500 hover:bg-rose-600 px-6 py-3 mt-4 rounded-full text-white transition-all duration-300"
             onClick={handlePredict}
           >
             Predict
-          </div>
+          </button>
         )}
 
         {/* Display Predicted Emotion */}
@@ -166,13 +165,68 @@ const Record = (props) => {
 
         {/* Display Recommended Songs */}
         {recommendedSongs.length > 0 && (
-          <div className="mt-8 text-xl text-blue-500 font-normal">
-            <h2>Recommended Songs:</h2>
-            <ul>
-              {recommendedSongs.map((song, index) => (
-                <li key={index}>{song}</li>
-              ))}
-            </ul>
+          <div className="mt-8">
+            <h2 className="text-2xl font-semibold mb-4 text-blue-500">
+              Recommended Songs:
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
+                <thead>
+                  <tr className="w-full bg-gray-100 border-b">
+                    <th className="py-2 px-4 text-left text-gray-600">
+                      Song Details
+                    </th>
+                    <th className="py-2 px-4 text-left text-gray-600">
+                      Danceability
+                    </th>
+                    <th className="py-2 px-4 text-left text-gray-600">
+                      Energy
+                    </th>
+                    <th className="py-2 px-4 text-left text-gray-600">
+                      Valence
+                    </th>
+                    <th className="py-2 px-4 text-left text-gray-600">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recommendedSongs.map((song, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-4">
+                        <a
+                          href={song.spotify_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Listen on Spotify
+                        </a>
+                      </td>
+                      <td className="py-2 px-4 text-gray-700">
+                        {song.danceability.toFixed(2)}
+                      </td>
+                      <td className="py-2 px-4 text-gray-700">
+                        {song.energy.toFixed(2)}
+                      </td>
+                      <td className="py-2 px-4 text-gray-700">
+                        {song.valence.toFixed(2)}
+                      </td>
+                      <td className="py-2 px-4">
+                        <a
+                          href={song.spotify_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          View on Spotify
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

@@ -1,11 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import tensorflow as tf
-from capture_emotion import detect_emotion
 from PIL import Image
 import os
 import numpy as np
-from recommend_song import recommend_songs, load_data
+from recommend_song import recommend_songs
 from flask import Flask, request, jsonify
 from keras.preprocessing.image import img_to_array
 from keras.models import load_model
@@ -52,7 +51,7 @@ def create_model():
 # Create the model and load weights
 model = create_model()
 # model.load_weights('/var/www/html/8thproject/emotion-detection-and-music-recommendation/trained_model_weights.weights.h5')
-model.load_weights('/var/www/html/8thproject/emotion-detection-and-music-recommendation/face_model.h5')
+# model.load_weights('/var/www/html/8thproject/emotion-detection-and-music-recommendation/face_model.h5')
 
 @app.route('/predict-emotion', methods=['POST'])
 def predict_emotion():
@@ -80,39 +79,22 @@ def predict_emotion():
         return jsonify({'error': str(e)}), 500
     
 @app.route('/recommend-songs', methods=['GET'])
-def recommend_songs_endpoint():
+def get_recommendations():
+    # Extract query parameters
+    emotion = request.args.get('emotion')
+    confidence = request.args.get('confidence', type=float)
+
+    if not emotion or confidence is None:
+        return jsonify({'error': 'Invalid input'}), 400
+
+    # Get recommendations based on emotion
     try:
-        # Extract emotion and num_recommendations from query parameters
-        emotion = request.args.get('emotion')
-        num_recommendations = int(request.args.get('num_recommendations', 10))  # Default to 10 if not provided
-        
-        # Load the dataset
-        df = load_data()
-        
-        # Get recommendations
-        recommendations = recommend_songs(emotion, df, num_recommendations)
-        
-        return jsonify(recommendations)
-    
+        recommendations = recommend_songs(emotion)
+        # Convert dataframe to list of dicts for JSON response
+        recommendations_list = recommendations.to_dict(orient='records')
+        return jsonify({"data":recommendations_list}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
-@app.route('/capture-emotion', methods=['POST'])
-def capture_emotion():
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image file provided'}), 400
-
-    image = request.files['image']
-    image_path = os.path.join("static", image.filename)
-
-    # Ensure the directory exists
-    if not os.path.exists('static'):
-        os.makedirs('static')
-
-    image.save(image_path)
-    emotion = detect_emotion(image_path)
-    return jsonify({'emotion': emotion})
 
 # Load the models
 detection_model_path = 'haarcascade_files/haarcascade_frontalface_default.xml'
@@ -121,43 +103,53 @@ face_detection = cv2.CascadeClassifier(detection_model_path)
 emotion_classifier = load_model(emotion_model_path, compile=False)
 EMOTIONS = ["angry", "disgust", "scared", "happy", "sad", "surprised", "neutral"]
 
-@app.route('/detect_emotion', methods=['POST'])
-def detect_emotion():
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image file found'}), 400
+def preprocess_image(image_path):
+    # Read the image
+    image = cv2.imread(image_path)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
-    image_file = request.files['image']
-    if not image_file:
-        return jsonify({'error': 'No file uploaded'}), 400
-
-    # Convert image file to array
-    image = Image.open(image_file)
-    image = image.convert('RGB')
-    image = np.array(image)
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-
+    # Detect faces
     faces = face_detection.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
-    
     if len(faces) == 0:
-        return jsonify({'error': 'No face detected'}), 400
-
+        raise ValueError("No face detected")
+    
+    # Select the largest face
     faces = sorted(faces, reverse=True, key=lambda x: (x[2] - x[0]) * (x[3] - x[1]))[0]
     (fX, fY, fW, fH) = faces
     roi = gray[fY:fY + fH, fX:fX + fW]
-    roi = cv2.resize(roi, (64, 64))
-    roi = roi.astype("float") / 255.0
-    roi = img_to_array(roi)
-    roi = np.expand_dims(roi, axis=0)
+    
+    # Resize to the required input shape of the emotion model
+    roi = cv2.resize(roi, (48, 48))  # Resize to 48x48
+    roi = roi.astype("float32") / 255.0  # Normalize
+    roi = np.expand_dims(roi, axis=-1)    # Add channel dimension
+    roi = np.expand_dims(roi, axis=0) 
+    
+    return roi
 
-    preds = emotion_classifier.predict(roi)[0]
-    emotion_probability = np.max(preds)
-    label = EMOTIONS[preds.argmax()]
+@app.route('/detect-emotion', methods=['POST'])
+def save_image():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
 
-    return jsonify({'emotion': label, 'confidence': float(emotion_probability)})
+    file = request.files['files']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    # Save the image
+    save_path = './images/uploaded-image.jpg'
+    file.save(save_path)
+    
+    try:
+        roi = preprocess_image(save_path)
+        preds = emotion_classifier.predict(roi)[0]
+        emotion_probability = np.max(preds)
+        label = EMOTIONS[preds.argmax()]
+        return jsonify({'emotion': label, 'confidence': float(emotion_probability)})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
-
-if __name__ == '__main__':
+    if not os.path.exists('images'):
+        os.makedirs('images')
     app.run(debug=True)

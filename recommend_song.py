@@ -1,30 +1,37 @@
 import pandas as pd
 
 # Load the dataset
-def load_data(file_path='/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/278k_labelled_uri.csv'):
-    df = pd.read_csv(file_path)
-    emotion_map = {0: 'sad', 1: 'happy', 2: 'energetic', 3: 'calm'}
-    df['emotion'] = df['labels'].map(emotion_map)
-    return df
+dataset_path = '/var/www/html/8thproject/emotion-detection-and-music-recommendation/dataset/278k_labelled_uri.csv'  # Update with the path to your dataset
+df = pd.read_csv(dataset_path)
 
-# Recommend songs based on emotion and range
-def recommend_songs(emotion, df, num_recommendations=10):
-    print(f"Received emotion: {emotion}")
-    print(f"Available emotions: {df['emotion'].unique()}")
+# Define a function to recommend songs based on emotion
+def recommend_songs(emotion, num_recommendations=10):
+    # Map emotions to labels
+    emotion_labels = {
+        'sad': 0,
+        'happy': 1,
+        'energetic': 2,
+        'calm': 3
+    }
+    if emotion not in emotion_labels:
+        raise ValueError("Emotion not recognized. Available emotions: 'sad', 'happy', 'energetic', 'calm'")
     
-    if emotion not in df['emotion'].unique():
-        return {'error': 'Invalid emotion'}
+    # Filter songs based on the emotion
+    emotion_label = emotion_labels[emotion]
+    filtered_songs = df[df['labels'] == emotion_label]
     
-    # Filter songs by the detected emotion
-    filtered_songs = df[df['emotion'] == emotion]
+    # Sort by a chosen feature (e.g., energy) for recommendations
+    recommended_songs = filtered_songs.sort_values(by='energy', ascending=False).head(num_recommendations)
     
-    # Select a random sample of songs
-    if len(filtered_songs) < num_recommendations:
-        num_recommendations = len(filtered_songs)
+    # Include Spotify links
+    recommended_songs['spotify_link'] = recommended_songs['uri'].apply(lambda uri: f'https://open.spotify.com/track/{uri.split(":")[2]}')
     
-    recommended_songs = filtered_songs.sample(n=num_recommendations)
-    
-    # Convert the result to a list of dictionaries
-    songs = recommended_songs[['duration (ms)', 'danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo']].to_dict(orient='records')
-    
-    return {'songs': songs}
+    # Return the relevant columns with the Spotify link
+    return recommended_songs[['danceability', 'energy', 'valence', 'spotify_link']]
+
+# Example usage
+emotion = 'happy'  # Replace with detected emotion
+recommended_songs = recommend_songs(emotion)
+
+print("Recommended Songs:")
+print(recommended_songs)
